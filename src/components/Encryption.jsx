@@ -10,6 +10,7 @@ const Encryption = () => {
   const [error, setError] = useState('');
   const [showAnimation, setShowAnimation] = useState(false);
   const [animationStep, setAnimationStep] = useState(0);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     let timer;
@@ -60,7 +61,24 @@ const Encryption = () => {
   };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        // Show success message
+        setCopySuccess(true);
+
+        // Reset success message after 2 seconds
+        setTimeout(() => {
+          setCopySuccess(false);
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+
+  // Use the global masking function
+  const maskEncryptedMessage = (message) => {
+    return window.maskPGPContent ? window.maskPGPContent(message) : message;
   };
 
   const renderAnimationStep = () => {
@@ -68,7 +86,7 @@ const Encryption = () => {
       case 0:
         return (
           <div className="text-center">
-            <motion.div 
+            <motion.div
               className="text-6xl mb-4 inline-block"
               initial={{ scale: 0 }}
               animate={{ scale: 1, rotate: [0, 10, 0] }}
@@ -82,7 +100,7 @@ const Encryption = () => {
       case 1:
         return (
           <div className="text-center">
-            <motion.div 
+            <motion.div
               className="text-6xl mb-4 inline-block"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -97,7 +115,7 @@ const Encryption = () => {
         return (
           <div className="text-center">
             <div className="relative inline-block">
-              <motion.div 
+              <motion.div
                 className="text-6xl"
                 initial={{ opacity: 1 }}
                 animate={{ opacity: 0 }}
@@ -105,7 +123,7 @@ const Encryption = () => {
               >
                 📝
               </motion.div>
-              <motion.div 
+              <motion.div
                 className="text-6xl absolute top-0 left-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -120,9 +138,9 @@ const Encryption = () => {
       case 3:
         return (
           <div className="text-center">
-            <motion.div 
+            <motion.div
               className="text-6xl mb-4 inline-block"
-              animate={{ 
+              animate={{
                 y: [0, -10, 0],
                 scale: [1, 1.1, 1]
               }}
@@ -140,7 +158,7 @@ const Encryption = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <motion.h1 
+      <motion.h1
         className="text-3xl md:text-4xl font-bold mb-8 text-center"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -150,52 +168,65 @@ const Encryption = () => {
       </motion.h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <motion.div 
+        <motion.div
           className="bg-gray-800 p-6 rounded-lg shadow-lg"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-2xl font-bold mb-4 text-blue-400">Encrypt a Message</h2>
-          
+
           <p className="mb-6">
-            Enter the recipient's public key and your message to encrypt it. Only the recipient with the 
+            Enter the recipient's public key and your message to encrypt it. Only the recipient with the
             corresponding private key will be able to decrypt and read your message.
           </p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-300 mb-2">Recipient's Public Key</label>
-              <textarea
-                value={recipientPublicKey}
-                onChange={(e) => setRecipientPublicKey(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32 font-mono text-sm"
-                placeholder="Paste recipient's public key here..."
-              />
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
+              <label className="text-gray-300 font-medium md:text-right pt-2">Recipient's Public Key:</label>
+              <div className="md:col-span-3">
+                <div className="relative">
+                  <textarea
+                    value={recipientPublicKey}
+                    onChange={(e) => setRecipientPublicKey(e.target.value)}
+                    className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32 font-mono text-sm"
+                    placeholder="Paste recipient's public key here..."
+                  />
+                  {recipientPublicKey && (
+                    <div className="absolute inset-0 px-4 py-2 bg-gray-700 text-white font-mono text-sm overflow-auto pointer-events-none">
+                      {maskEncryptedMessage(recipientPublicKey)}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">This is the public key of the person who will receive your message</p>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-gray-300 mb-2">Your Message</label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32"
-                placeholder="Type your message here..."
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
+              <label className="text-gray-300 font-medium md:text-right pt-2">Your Message:</label>
+              <div className="md:col-span-3">
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32"
+                  placeholder="Type your message here..."
+                />
+                <p className="text-xs text-gray-400 mt-1">This message will be encrypted and only the recipient can read it</p>
+              </div>
             </div>
-            
+
             {error && (
               <div className="text-red-400 bg-red-900/20 p-3 rounded">
                 {error}
               </div>
             )}
-            
+
             <motion.button
               onClick={encryptMessage}
               disabled={isEncrypting}
               className={`w-full py-2 px-4 rounded font-bold ${
-                isEncrypting 
-                  ? 'bg-gray-600 cursor-not-allowed' 
+                isEncrypting
+                  ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
               whileHover={!isEncrypting ? { scale: 1.02 } : {}}
@@ -205,52 +236,65 @@ const Encryption = () => {
             </motion.button>
           </div>
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           className="bg-gray-800 p-6 rounded-lg shadow-lg"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <h2 className="text-2xl font-bold mb-4 text-green-400">Encrypted Result</h2>
-          
+
           {!encryptedMessage && !showAnimation && (
             <div className="h-64 flex items-center justify-center text-gray-400">
               <p>Your encrypted message will appear here</p>
             </div>
           )}
-          
+
           {showAnimation && !encryptedMessage && (
             <div className="h-64 flex items-center justify-center">
               {renderAnimationStep()}
             </div>
           )}
-          
+
           {encryptedMessage && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="space-y-4"
+              className="space-y-4 border border-green-800/30 rounded-lg p-4 bg-gray-800/50"
             >
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-green-400">PGP Encrypted Message</h3>
-                <button 
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-bold text-green-400 flex items-center">
+                  <span className="mr-2 text-lg">🔒</span> PGP Encrypted Message
+                </h3>
+                <button
                   onClick={() => copyToClipboard(encryptedMessage)}
-                  className="text-xs bg-blue-900/30 hover:bg-blue-800/50 px-2 py-1 rounded"
+                  className={`text-sm border border-blue-600/50 ${copySuccess ? 'bg-green-600/20 text-green-400' : 'bg-blue-900/30 hover:bg-blue-800/50 text-blue-400'} px-3 py-1 rounded-md flex items-center`}
                 >
-                  Copy
+                  {copySuccess ? (
+                    <>
+                      <span className="mr-1">✓</span> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <span className="mr-1">📋</span> Copy Message
+                    </>
+                  )}
                 </button>
               </div>
-              
-              <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto h-64">
-                {encryptedMessage}
+
+              <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto h-64 border border-gray-700">
+                {maskEncryptedMessage(encryptedMessage)}
               </div>
-              
+
               <div className="bg-blue-900/20 border border-blue-800 p-3 rounded-lg">
-                <p className="text-blue-400 text-sm">
-                  <strong>Note:</strong> This encrypted message can only be decrypted by the person who has 
-                  the private key corresponding to the public key you used for encryption.
+                <p className="text-blue-400 text-sm flex items-start">
+                  <span className="text-blue-500 mr-2 mt-0.5">ℹ️</span>
+                  <span>
+                    <strong>Note:</strong> This encrypted message can only be decrypted by the person who has
+                    the private key corresponding to the public key you used for encryption.
+                  </span>
                 </p>
               </div>
             </motion.div>
