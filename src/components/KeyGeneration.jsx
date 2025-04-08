@@ -145,7 +145,6 @@ const KeyGeneration = () => {
                   onChange={(e) => setKeySize(parseInt(e.target.value))}
                   className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
                 >
-                  <option value={1024}>1024 (Faster, less secure)</option>
                   <option value={2048}>2048 (Recommended)</option>
                   <option value={4096}>4096 (More secure, slower)</option>
                 </select>
