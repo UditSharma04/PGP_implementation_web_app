@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import * as openpgp from 'openpgp';
+import MaskedContent from './MaskedContent';
+import { createCopyFunction } from '../utils/maskingUtils';
 
 const Decryption = () => {
   const [privateKey, setPrivateKey] = useState('');
@@ -74,9 +76,17 @@ const Decryption = () => {
     }
   };
 
-  // Use the global masking function
-  const maskEncryptedMessage = (message) => {
-    return window.maskPGPContent ? window.maskPGPContent(message) : message;
+  // Create copy function with success state handling
+  const copyToClipboard = createCopyFunction(setCopySuccess);
+  
+  // Define masking options
+  const maskOptions = {
+    showHeaders: true,
+    visibleStart: 10,
+    visibleEnd: 5,
+    maskChar: '•',
+    preserveLength: false,
+    showLineCount: true
   };
 
   const renderAnimationStep = () => {
@@ -186,46 +196,63 @@ const Decryption = () => {
           </p>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
               <label className="text-gray-300 font-medium md:text-right pt-2">Your Private Key:</label>
               <div className="md:col-span-3">
-                <textarea
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none h-32 font-mono text-sm"
-                  placeholder="Paste your private key here..."
-                />
+                <div className="relative">
+                  <textarea
+                    value={privateKey}
+                    onChange={(e) => setPrivateKey(e.target.value)}
+                    className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none h-32 font-mono text-sm"
+                    placeholder="Paste your private key here..."
+                  />
+                  {privateKey && (
+                    <div className="absolute inset-0 overflow-hidden">
+                      <MaskedContent 
+                        content={privateKey}
+                        maskOptions={maskOptions}
+                        buttonPosition="top-right"
+                        maxHeight={128}
+                      />
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 mt-1">This is your private key that will be used to decrypt the message</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center mb-4">
               <label className="text-gray-300 font-medium md:text-right">Passphrase:</label>
               <div className="md:col-span-3">
                 <input
                   type="password"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none"
                   placeholder="Enter your passphrase"
                 />
                 <p className="text-xs text-gray-400 mt-1">Required if your private key is protected with a passphrase</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
               <label className="text-gray-300 font-medium md:text-right pt-2">Encrypted Message:</label>
               <div className="md:col-span-3">
                 <div className="relative">
                   <textarea
                     value={encryptedMessage}
                     onChange={(e) => setEncryptedMessage(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none h-32 font-mono text-sm"
+                    className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-purple-500 focus:outline-none h-32 font-mono text-sm"
                     placeholder="Paste the encrypted message here..."
                   />
                   {encryptedMessage && (
-                    <div className="absolute inset-0 px-4 py-2 bg-gray-700 text-white font-mono text-sm overflow-auto pointer-events-none">
-                      {maskEncryptedMessage(encryptedMessage)}
+                    <div className="absolute inset-0 overflow-hidden">
+                      <MaskedContent 
+                        content={encryptedMessage}
+                        maskOptions={maskOptions}
+                        buttonPosition="top-right"
+                        maxHeight={128}
+                      />
                     </div>
                   )}
                 </div>
@@ -308,7 +335,7 @@ const Decryption = () => {
                 </button>
               </div>
 
-              <div className="bg-gray-900 p-4 rounded-lg text-white overflow-auto min-h-32 max-h-64 border border-green-800/50">
+              <div className="bg-gray-900 p-4 rounded-lg text-white overflow-auto min-h-32 max-h-64 border border-green-800/50" style={{ maxHeight: '200px', overflowX: 'auto', overflowY: 'auto' }}>
                 <p className="whitespace-pre-wrap">{decryptedMessage}</p>
               </div>
 

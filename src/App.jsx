@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import './App.css'
+import { maskPGPContent } from './utils/maskingUtils'
 
 // Import our components
 import Home from './components/Home'
@@ -12,6 +13,9 @@ import PGPExplained from './components/PGPExplained'
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Make maskPGPContent available globally for backward compatibility
+  window.maskPGPContent = maskPGPContent;
 
   return (
     <Router>
@@ -31,21 +35,22 @@ function App() {
                 </div>
               </motion.div>
 
-              {/* Mobile menu button */}
-              <div className="md:hidden">
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="text-gray-300 hover:text-white focus:outline-none focus:text-white"
-                >
-                  <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
-                    {isMenuOpen ? (
-                      <path fillRule="evenodd" clipRule="evenodd" d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828-4.828a1 1 0 1 1 1.414 1.414l-4.828 4.829 4.828 4.828z" />
-                    ) : (
+              {/* Mobile menu button - only shown when menu is closed */}
+              {!isMenuOpen && (
+                <div className="md:hidden">
+                  <motion.button
+                    onClick={() => setIsMenuOpen(true)}
+                    className="text-gray-300 hover:text-white focus:outline-none focus:text-white p-2 rounded-md"
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Open menu"
+                    aria-expanded={false}
+                  >
+                    <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
                       <path fillRule="evenodd" d="M4 5h16a1 1 0 0 1 0 2H4a1 1 0 1 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
-                    )}
-                  </svg>
-                </button>
-              </div>
+                    </svg>
+                  </motion.button>
+                </div>
+              )}
 
               {/* Desktop Navigation */}
               <motion.div
@@ -83,37 +88,49 @@ function App() {
             </nav>
           </div>
 
-          {/* Mobile Navigation */}
+          {/* Mobile Navigation - Full Screen Overlay */}
           {isMenuOpen && (
             <motion.div
-              className="md:hidden bg-gray-800 border-t border-gray-700"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              className="md:hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-95 flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="container mx-auto px-4 py-2 space-y-1">
+              <div className="flex justify-end p-4 border-b border-gray-700">
+                <button
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-gray-300 hover:text-white focus:outline-none focus:text-white p-2"
+                  aria-label="Close menu"
+                >
+                  <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828-4.828a1 1 0 1 1 1.414 1.414l-4.828 4.829 4.828 4.828z" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-grow flex flex-col justify-center items-center space-y-4 p-4">
                 <NavLink to="/" className={({isActive}) =>
-                  `block px-4 py-2 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
+                  `block w-full max-w-xs text-center text-lg px-6 py-3 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 } onClick={() => setIsMenuOpen(false)}>
                   Home
                 </NavLink>
                 <NavLink to="/pgp-explained" className={({isActive}) =>
-                  `block px-4 py-2 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
+                  `block w-full max-w-xs text-center text-lg px-6 py-3 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 } onClick={() => setIsMenuOpen(false)}>
                   What is PGP?
                 </NavLink>
                 <NavLink to="/key-generation" className={({isActive}) =>
-                  `block px-4 py-2 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
+                  `block w-full max-w-xs text-center text-lg px-6 py-3 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 } onClick={() => setIsMenuOpen(false)}>
                   Key Generation
                 </NavLink>
                 <NavLink to="/encryption" className={({isActive}) =>
-                  `block px-4 py-2 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
+                  `block w-full max-w-xs text-center text-lg px-6 py-3 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 } onClick={() => setIsMenuOpen(false)}>
                   Encryption
                 </NavLink>
                 <NavLink to="/decryption" className={({isActive}) =>
-                  `block px-4 py-2 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`
+                  `block w-full max-w-xs text-center text-lg px-6 py-3 rounded-md transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
                 } onClick={() => setIsMenuOpen(false)}>
                   Decryption
                 </NavLink>

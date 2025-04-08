@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import * as openpgp from 'openpgp';
+import MaskedContent from './MaskedContent';
+import { createCopyFunction, downloadAsFile } from '../utils/maskingUtils';
 
 const KeyGeneration = () => {
   const [name, setName] = useState('');
@@ -44,52 +46,31 @@ const KeyGeneration = () => {
     }
   };
 
-  const copyToClipboard = (text, type) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        // Show success message
-        setCopySuccess({ ...copySuccess, [type]: true });
-
-        // Reset success message after 2 seconds
-        setTimeout(() => {
-          setCopySuccess({ ...copySuccess, [type]: false });
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Failed to copy: ', err);
-      });
+  // Handle copying key to clipboard
+  const handleCopy = (text, type) => {
+    copyToClipboard(text);
+    setCopySuccess({ ...copySuccess, [type]: true });
+    
+    // Reset success message after 2 seconds
+    setTimeout(() => {
+      setCopySuccess({ ...copySuccess, [type]: false });
+    }, 2000);
   };
 
-  // Function to mask key for display
-  const maskKey = (key) => {
-    if (!key) return '';
-
-    const lines = key.split('\n');
-    let maskedLines = [];
-
-    // Keep header and footer lines intact
-    for (let i = 0; i < lines.length; i++) {
-      if (i === 0 || i === lines.length - 1 || lines[i].trim() === '') {
-        maskedLines.push(lines[i]);
-      } else if (i === 1 || i === lines.length - 2) {
-        // Show first 10 and last 5 characters of content lines
-        const line = lines[i];
-        if (line.length > 15) {
-          maskedLines.push(line.substring(0, 10) + '•••••' + line.substring(line.length - 5));
-        } else {
-          maskedLines.push(line);
-        }
-      } else {
-        // Replace middle lines with dots
-        maskedLines.push('•••••••••••••••••••••');
-      }
-    }
-
-    return maskedLines.join('\n');
+  const copyToClipboard = createCopyFunction((type) => {
+    setCopySuccess({ ...copySuccess, [type]: true });
+    setTimeout(() => setCopySuccess({ ...copySuccess, [type]: false }), 2000);
+  });
+  
+  // Define masking options
+  const maskOptions = {
+    showHeaders: true,
+    visibleStart: 10,
+    visibleEnd: 5,
+    maskChar: '•',
+    preserveLength: false,
+    showLineCount: true
   };
-
-  // This function is also used by other components
-  window.maskPGPContent = maskKey;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -117,53 +98,52 @@ const KeyGeneration = () => {
           </p>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
               <label className="text-gray-300 font-medium md:text-right">Full Name:</label>
               <div className="md:col-span-2">
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
                   placeholder="John Doe"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
               <label className="text-gray-300 font-medium md:text-right">Email Address:</label>
               <div className="md:col-span-2">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
                   placeholder="john@example.com"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
               <label className="text-gray-300 font-medium md:text-right">Passphrase:</label>
               <div className="md:col-span-2">
                 <input
                   type="password"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
                   placeholder="Enter a strong passphrase"
                 />
-
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
               <label className="text-gray-300 font-medium md:text-right">Key Size (bits):</label>
               <div className="md:col-span-2">
                 <select
                   value={keySize}
                   onChange={(e) => setKeySize(parseInt(e.target.value))}
-                  className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
                 >
                   <option value={1024}>1024 (Faster, less secure)</option>
                   <option value={2048}>2048 (Recommended)</option>
@@ -244,23 +224,38 @@ const KeyGeneration = () => {
                   <h3 className="font-bold text-green-400 flex items-center">
                     <span className="mr-2 text-lg">🔑</span> Public Key
                   </h3>
-                  <button
-                    onClick={() => copyToClipboard(keyPair.publicKey, 'public')}
-                    className={`text-sm border border-blue-600/50 ${copySuccess.public ? 'bg-green-600/20 text-green-400' : 'bg-blue-900/30 hover:bg-blue-800/50 text-blue-400'} px-3 py-1 rounded-md flex items-center`}
-                  >
-                    {copySuccess.public ? (
-                      <>
-                        <span className="mr-1">✓</span> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-1">📋</span> Copy Full Key
-                      </>
-                    )}
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => downloadAsFile(keyPair.publicKey, `pgp-public-key-${name.replace(/\s+/g, '-')}.asc`)}
+                      className="text-sm border border-green-600/50 bg-green-900/30 hover:bg-green-800/50 text-green-400 px-3 py-1 rounded-md flex items-center"
+                      title="Download public key as text file"
+                    >
+                      <span className="mr-1">💾</span> Download
+                    </button>
+                    <button
+                      onClick={() => handleCopy(keyPair.publicKey, 'public')}
+                      className={`text-sm border border-blue-600/50 ${copySuccess.public ? 'bg-green-600/20 text-green-400' : 'bg-blue-900/30 hover:bg-blue-800/50 text-blue-400'} px-3 py-1 rounded-md flex items-center`}
+                    >
+                      {copySuccess.public ? (
+                        <>
+                          <span className="mr-1">✓</span> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-1">📋</span> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto max-h-32 border border-gray-700">
-                  {maskKey(keyPair.publicKey)}
+                <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto max-h-48 border border-gray-700">
+                  <MaskedContent 
+                    content={keyPair.publicKey}
+                    maskOptions={maskOptions}
+                    onCopy={(text) => handleCopy(text, 'public')}
+                    copySuccess={copySuccess.public}
+                    maxHeight={200}
+                  />
                 </div>
                 <p className="text-xs text-gray-400 mt-2 flex items-center">
                   <span className="text-green-500 mr-1">ℹ️</span>
@@ -278,23 +273,38 @@ const KeyGeneration = () => {
                   <h3 className="font-bold text-red-400 flex items-center">
                     <span className="mr-2 text-lg">🔐</span> Private Key
                   </h3>
-                  <button
-                    onClick={() => copyToClipboard(keyPair.privateKey, 'private')}
-                    className={`text-sm border border-red-600/50 ${copySuccess.private ? 'bg-green-600/20 text-green-400' : 'bg-red-900/30 hover:bg-red-800/50 text-red-400'} px-3 py-1 rounded-md flex items-center`}
-                  >
-                    {copySuccess.private ? (
-                      <>
-                        <span className="mr-1">✓</span> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-1">📋</span> Copy Full Key
-                      </>
-                    )}
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => downloadAsFile(keyPair.privateKey, `pgp-private-key-${name.replace(/\s+/g, '-')}.asc`)}
+                      className="text-sm border border-yellow-600/50 bg-yellow-900/30 hover:bg-yellow-800/50 text-yellow-400 px-3 py-1 rounded-md flex items-center"
+                      title="Download private key as text file"
+                    >
+                      <span className="mr-1">💾</span> Download
+                    </button>
+                    <button
+                      onClick={() => handleCopy(keyPair.privateKey, 'private')}
+                      className={`text-sm border border-red-600/50 ${copySuccess.private ? 'bg-green-600/20 text-green-400' : 'bg-red-900/30 hover:bg-red-800/50 text-red-400'} px-3 py-1 rounded-md flex items-center`}
+                    >
+                      {copySuccess.private ? (
+                        <>
+                          <span className="mr-1">✓</span> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-1">📋</span> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto max-h-32 border border-gray-700">
-                  {maskKey(keyPair.privateKey)}
+                <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto max-h-48 border border-gray-700">
+                  <MaskedContent 
+                    content={keyPair.privateKey}
+                    maskOptions={maskOptions}
+                    onCopy={(text) => handleCopy(text, 'private')}
+                    copySuccess={copySuccess.private}
+                    maxHeight={200}
+                  />
                 </div>
                 <p className="text-xs text-red-400 mt-2 font-bold flex items-center">
                   <span className="text-red-500 mr-1">⚠️</span>

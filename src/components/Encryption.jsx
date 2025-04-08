@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import * as openpgp from 'openpgp';
+import MaskedContent from './MaskedContent';
+import { createCopyFunction } from '../utils/maskingUtils';
 
 const Encryption = () => {
   const [recipientPublicKey, setRecipientPublicKey] = useState('');
@@ -60,25 +62,17 @@ const Encryption = () => {
     }
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        // Show success message
-        setCopySuccess(true);
-
-        // Reset success message after 2 seconds
-        setTimeout(() => {
-          setCopySuccess(false);
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Failed to copy: ', err);
-      });
-  };
-
-  // Use the global masking function
-  const maskEncryptedMessage = (message) => {
-    return window.maskPGPContent ? window.maskPGPContent(message) : message;
+  // Create copy function with success state handling
+  const copyToClipboard = createCopyFunction(setCopySuccess);
+  
+  // Define masking options
+  const maskOptions = {
+    showHeaders: true,
+    visibleStart: 10,
+    visibleEnd: 5,
+    maskChar: '•',
+    preserveLength: false,
+    showLineCount: true
   };
 
   const renderAnimationStep = () => {
@@ -182,19 +176,24 @@ const Encryption = () => {
           </p>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
               <label className="text-gray-300 font-medium md:text-right pt-2">Recipient's Public Key:</label>
               <div className="md:col-span-3">
                 <div className="relative">
                   <textarea
                     value={recipientPublicKey}
                     onChange={(e) => setRecipientPublicKey(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32 font-mono text-sm"
+                    className="w-full px-4 py-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none h-32 font-mono text-sm"
                     placeholder="Paste recipient's public key here..."
                   />
                   {recipientPublicKey && (
-                    <div className="absolute inset-0 px-4 py-2 bg-gray-700 text-white font-mono text-sm overflow-auto pointer-events-none">
-                      {maskEncryptedMessage(recipientPublicKey)}
+                    <div className="absolute inset-0 overflow-hidden">
+                      <MaskedContent 
+                        content={recipientPublicKey}
+                        maskOptions={maskOptions}
+                        buttonPosition="top-right"
+                        maxHeight={128}
+                      />
                     </div>
                   )}
                 </div>
@@ -284,9 +283,13 @@ const Encryption = () => {
                 </button>
               </div>
 
-              <div className="bg-gray-900 p-3 rounded-lg text-gray-300 text-sm font-mono overflow-auto h-64 border border-gray-700">
-                {maskEncryptedMessage(encryptedMessage)}
-              </div>
+              <MaskedContent 
+                content={encryptedMessage}
+                maskOptions={maskOptions}
+                onCopy={copyToClipboard}
+                copySuccess={copySuccess}
+                buttonPosition="top-right"
+              />
 
               <div className="bg-blue-900/20 border border-blue-800 p-3 rounded-lg">
                 <p className="text-blue-400 text-sm flex items-start">
